@@ -24,8 +24,8 @@ const iconNames = {
 };
 
 const themes = {
-  light: { background: "#F3F4F1", ink: "#1B2B23", muted: "#6B7A72", accent: "#2F6B4E", track: "#DDE2DD", tile: "#FFFFFF" },
-  dark: { background: "#111614", ink: "#E5EAE6", muted: "#8A9A91", accent: "#86BC9C", track: "#232B27", tile: "#E5EAE6" },
+  light: { background: "#F3F4F1", ink: "#1B2B23", muted: "#6B7A72", accent: "#2F6B4E", track: "#DDE2DD", tile: "#D5E6DB", tileInk: "#2F6B4E" },
+  dark: { background: "#111614", ink: "#E5EAE6", muted: "#8A9A91", accent: "#86BC9C", track: "#232B27", tile: "#86BC9C", tileInk: "#111614" },
 };
 
 const layout = { width: 460, padding: 24, titleHeight: 56, rowHeight: 34, tileSize: 26, iconSize: 18, nameX: 62, barX: 180, barWidth: 190 };
@@ -112,10 +112,10 @@ function renderRow(entry, index, theme) {
 
   const iconMarkup = icon
     ? `<svg x="${iconX}" y="${iconY}" width="${layout.iconSize}" height="${layout.iconSize}" viewBox="${icon.viewBox}">${icon.content}</svg>`
-    : `<circle cx="${layout.padding + layout.tileSize / 2}" cy="${centerY}" r="4" fill="${theme.muted}"/>`;
+    : `<circle cx="${layout.padding + layout.tileSize / 2}" cy="${centerY}" r="4" fill="${theme.tileInk}"/>`;
 
   return [
-    `<rect x="${layout.padding + 0.5}" y="${tileY + 0.5}" width="${layout.tileSize - 1}" height="${layout.tileSize - 1}" rx="7" fill="${theme.tile}" stroke="${theme.track}"/>`,
+    `<rect x="${layout.padding}" y="${tileY}" width="${layout.tileSize}" height="${layout.tileSize}" rx="7" fill="${theme.tile}"/>`,
     iconMarkup,
     `<text x="${layout.nameX}" y="${centerY}" dominant-baseline="central" fill="${theme.ink}">${escapeXml(entry.name)}</text>`,
     `<rect x="${layout.barX}" y="${centerY - 4}" width="${layout.barWidth}" height="8" rx="4" fill="${theme.track}"/>`,
