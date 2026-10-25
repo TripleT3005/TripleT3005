@@ -23,14 +23,12 @@ const iconNames = {
   XAML: "dot-net",
 };
 
-const monochromeIcons = new Set(["bash"]);
-
 const themes = {
-  light: { background: "#F3F4F1", ink: "#1B2B23", muted: "#6B7A72", accent: "#2F6B4E", track: "#DDE2DD" },
-  dark: { background: "#111614", ink: "#E5EAE6", muted: "#8A9A91", accent: "#86BC9C", track: "#232B27" },
+  light: { background: "#F3F4F1", ink: "#1B2B23", muted: "#6B7A72", accent: "#2F6B4E", track: "#DDE2DD", tile: "#FFFFFF" },
+  dark: { background: "#111614", ink: "#E5EAE6", muted: "#8A9A91", accent: "#86BC9C", track: "#232B27", tile: "#E5EAE6" },
 };
 
-const layout = { width: 460, padding: 24, titleHeight: 56, rowHeight: 30, iconSize: 18, nameX: 52, barX: 172, barWidth: 198 };
+const layout = { width: 460, padding: 24, titleHeight: 56, rowHeight: 34, tileSize: 26, iconSize: 18, nameX: 62, barX: 180, barWidth: 190 };
 
 // GitHub API
 
@@ -90,7 +88,7 @@ function loadIcon(language) {
       const svg = readFileSync(file, "utf8");
       const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1] ?? "0 0 128 128";
       const content = svg.slice(svg.indexOf(">", svg.indexOf("<svg")) + 1, svg.lastIndexOf("</svg>"));
-      return { viewBox, content: monochromeIcons.has(name) ? content.replace(/\s(fill|style)="[^"]*"/g, "") : content };
+      return { viewBox, content };
     }
   }
 
@@ -106,15 +104,18 @@ function escapeXml(text) {
 function renderRow(entry, index, theme) {
   const y = layout.titleHeight + index * layout.rowHeight;
   const centerY = y + layout.rowHeight / 2;
+  const tileY = centerY - layout.tileSize / 2;
+  const iconX = layout.padding + (layout.tileSize - layout.iconSize) / 2;
   const iconY = centerY - layout.iconSize / 2;
   const icon = loadIcon(entry.name);
   const filled = Math.max(4, layout.barWidth * entry.share);
 
   const iconMarkup = icon
-    ? `<svg x="${layout.padding}" y="${iconY}" width="${layout.iconSize}" height="${layout.iconSize}" viewBox="${icon.viewBox}" fill="${theme.ink}">${icon.content}</svg>`
-    : `<circle cx="${layout.padding + layout.iconSize / 2}" cy="${centerY}" r="5" fill="${theme.muted}"/>`;
+    ? `<svg x="${iconX}" y="${iconY}" width="${layout.iconSize}" height="${layout.iconSize}" viewBox="${icon.viewBox}">${icon.content}</svg>`
+    : `<circle cx="${layout.padding + layout.tileSize / 2}" cy="${centerY}" r="4" fill="${theme.muted}"/>`;
 
   return [
+    `<rect x="${layout.padding + 0.5}" y="${tileY + 0.5}" width="${layout.tileSize - 1}" height="${layout.tileSize - 1}" rx="7" fill="${theme.tile}" stroke="${theme.track}"/>`,
     iconMarkup,
     `<text x="${layout.nameX}" y="${centerY}" dominant-baseline="central" fill="${theme.ink}">${escapeXml(entry.name)}</text>`,
     `<rect x="${layout.barX}" y="${centerY - 4}" width="${layout.barWidth}" height="8" rx="4" fill="${theme.track}"/>`,
