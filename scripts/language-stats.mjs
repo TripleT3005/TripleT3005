@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? "TripleT3005";
 const token = process.env.GITHUB_TOKEN;
 const outputDirectory = process.argv[2] ?? "output";
-const maxLanguages = 6;
+const maxLanguages = 8;
 
 const iconDirectory = join(dirname(fileURLToPath(import.meta.url)), "..", "node_modules", "devicon", "icons");
 
