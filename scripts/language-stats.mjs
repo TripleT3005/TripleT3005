@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? "TripleT3005";
 const token = process.env.GITHUB_TOKEN;
 const outputDirectory = process.argv[2] ?? "output";
-const maxLanguages = 8;
+const maxLanguages = 9;
 
 const iconDirectory = join(dirname(fileURLToPath(import.meta.url)), "..", "node_modules", "devicon", "icons");
 
@@ -15,17 +15,22 @@ const iconNames = {
   "C#": "csharp",
   "C++": "cplusplus",
   CSS: "css3",
+  Dockerfile: "docker",
   HTML: "html5",
   Shell: "bash",
+  "Visual Basic .NET": "visualbasic",
   Vue: "vuejs",
+  XAML: "dot-net",
 };
+
+const monochromeIcons = new Set(["bash"]);
 
 const themes = {
   light: { background: "#F3F4F1", ink: "#1B2B23", muted: "#6B7A72", accent: "#2F6B4E", track: "#DDE2DD" },
   dark: { background: "#111614", ink: "#E5EAE6", muted: "#8A9A91", accent: "#86BC9C", track: "#232B27" },
 };
 
-const layout = { width: 460, padding: 24, titleHeight: 56, rowHeight: 30, iconSize: 18, nameX: 52, barX: 150, barWidth: 220 };
+const layout = { width: 460, padding: 24, titleHeight: 56, rowHeight: 30, iconSize: 18, nameX: 52, barX: 172, barWidth: 198 };
 
 // GitHub API
 
@@ -79,11 +84,13 @@ function toShares(totals) {
 function loadIcon(language) {
   const name = iconNames[language] ?? language.toLowerCase();
 
-  for (const variant of ["plain", "original"]) {
+  for (const variant of ["original", "plain"]) {
     const file = join(iconDirectory, name, `${name}-${variant}.svg`);
     if (existsSync(file)) {
-      const paths = readFileSync(file, "utf8").match(/<path\b[^>]*\/>/g) ?? [];
-      return paths.map((path) => path.replace(/\s(fill|style)="[^"]*"/g, "")).join("");
+      const svg = readFileSync(file, "utf8");
+      const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1] ?? "0 0 128 128";
+      const content = svg.slice(svg.indexOf(">", svg.indexOf("<svg")) + 1, svg.lastIndexOf("</svg>"));
+      return { viewBox, content: monochromeIcons.has(name) ? content.replace(/\s(fill|style)="[^"]*"/g, "") : content };
     }
   }
 
@@ -100,12 +107,11 @@ function renderRow(entry, index, theme) {
   const y = layout.titleHeight + index * layout.rowHeight;
   const centerY = y + layout.rowHeight / 2;
   const iconY = centerY - layout.iconSize / 2;
-  const scale = layout.iconSize / 128;
   const icon = loadIcon(entry.name);
   const filled = Math.max(4, layout.barWidth * entry.share);
 
   const iconMarkup = icon
-    ? `<g transform="translate(${layout.padding} ${iconY}) scale(${scale})" fill="${theme.ink}">${icon}</g>`
+    ? `<svg x="${layout.padding}" y="${iconY}" width="${layout.iconSize}" height="${layout.iconSize}" viewBox="${icon.viewBox}" fill="${theme.ink}">${icon.content}</svg>`
     : `<circle cx="${layout.padding + layout.iconSize / 2}" cy="${centerY}" r="5" fill="${theme.muted}"/>`;
 
   return [
@@ -121,7 +127,7 @@ function renderCard(entries, theme) {
   const height = layout.titleHeight + entries.length * layout.rowHeight + layout.padding - 6;
   const rows = entries.map((entry, index) => renderRow(entry, index, theme)).join("\n  ");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${height}" viewBox="0 0 ${layout.width} ${height}" role="img" aria-label="Most used languages">
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${layout.width}" height="${height}" viewBox="0 0 ${layout.width} ${height}" role="img" aria-label="Most used languages">
 <!-- Language icons: Devicon (https://devicon.dev), MIT License, Copyright (c) 2015 konpa -->
 <style>text{font-family:system-ui,-apple-system,"Segoe UI Variable","Segoe UI",Roboto,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}</style>
   <rect x="0.5" y="0.5" width="${layout.width - 1}" height="${height - 1}" rx="12" fill="${theme.background}" stroke="${theme.track}"/>
