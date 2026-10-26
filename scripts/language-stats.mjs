@@ -67,11 +67,11 @@ async function getLanguageTotals() {
 function toShares(totals) {
   const sum = [...totals.values()].reduce((a, b) => a + b, 0);
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-  const top = sorted.slice(0, maxLanguages).map(([name, bytes]) => ({ name, share: bytes / sum }));
+  const top = sorted.slice(0, maxLanguages).map(([name, bytes]) => ({ name, bytes, share: bytes / sum }));
   const rest = sorted.slice(maxLanguages).reduce((a, [, bytes]) => a + bytes, 0);
 
   if (rest > 0) {
-    top.push({ name: "Other", share: rest / sum });
+    top.push({ name: "Other", bytes: rest, share: rest / sum });
   }
 
   return top;
@@ -97,6 +97,10 @@ function loadIcon(language) {
 
 // Rendering
 
+function formatSize(bytes) {
+  return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(2)} MB` : `${(bytes / 1e3).toFixed(1)} KB`;
+}
+
 function escapeXml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -120,12 +124,13 @@ function renderRow(entry, index, theme) {
     `<text x="${layout.nameX}" y="${centerY}" dominant-baseline="central" fill="${theme.ink}">${escapeXml(entry.name)}</text>`,
     `<rect x="${layout.barX}" y="${centerY - 4}" width="${layout.barWidth}" height="8" rx="4" fill="${theme.track}"/>`,
     `<rect x="${layout.barX}" y="${centerY - 4}" width="${filled.toFixed(1)}" height="8" rx="4" fill="${theme.accent}"/>`,
-    `<text x="${layout.width - layout.padding}" y="${centerY}" dominant-baseline="central" text-anchor="end" fill="${theme.muted}">${(entry.share * 100).toFixed(1)} %</text>`,
+    `<text x="${layout.width - layout.padding}" y="${centerY}" dominant-baseline="central" text-anchor="end" fill="${theme.muted}">${formatSize(entry.bytes)}</text>`,
   ].join("\n  ");
 }
 
 function renderCard(entries, theme) {
   const height = layout.titleHeight + entries.length * layout.rowHeight + layout.padding - 6;
+  const total = entries.reduce((sum, entry) => sum + entry.bytes, 0);
   const rows = entries.map((entry, index) => renderRow(entry, index, theme)).join("\n  ");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${layout.width}" height="${height}" viewBox="0 0 ${layout.width} ${height}" role="img" aria-label="Most used languages">
@@ -133,6 +138,7 @@ function renderCard(entries, theme) {
 <style>text{font-family:system-ui,-apple-system,"Segoe UI Variable","Segoe UI",Roboto,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}</style>
   <rect x="0.5" y="0.5" width="${layout.width - 1}" height="${height - 1}" rx="12" fill="${theme.background}" stroke="${theme.track}"/>
   <text class="title" x="${layout.padding}" y="34" fill="${theme.ink}">Most used languages</text>
+  <text x="${layout.width - layout.padding}" y="34" text-anchor="end" fill="${theme.muted}">${formatSize(total)} of code</text>
   ${rows}
 </svg>
 `;
@@ -147,4 +153,4 @@ for (const [name, theme] of Object.entries(themes)) {
   writeFileSync(join(outputDirectory, `languages-${name}.svg`), renderCard(entries, theme));
 }
 
-console.log(entries.map((entry) => `${entry.name}: ${(entry.share * 100).toFixed(1)} %`).join("\n"));
+console.log(entries.map((entry) => `${entry.name}: ${formatSize(entry.bytes)}`).join("\n"));
