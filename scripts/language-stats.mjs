@@ -28,7 +28,7 @@ const themes = {
   dark: { background: "#111614", ink: "#E5EAE6", muted: "#8A9A91", accent: "#86BC9C", track: "#232B27", tile: "#86BC9C", tileInk: "#111614" },
 };
 
-const layout = { width: 460, padding: 24, titleHeight: 56, rowHeight: 34, tileSize: 26, iconSize: 18, nameX: 62, barX: 180, barWidth: 190 };
+const layout = { width: 520, padding: 24, titleHeight: 56, rowHeight: 34, tileSize: 26, iconSize: 18, nameX: 62, barX: 180, barWidth: 190, sizeX: 440 };
 
 // GitHub API
 
@@ -97,6 +97,10 @@ function loadIcon(language) {
 
 // Rendering
 
+function formatShare(share) {
+  return share < 0.001 ? "< 0.1 %" : `${(share * 100).toFixed(1)} %`;
+}
+
 function formatSize(bytes) {
   return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(2)} MB` : `${(bytes / 1e3).toFixed(1)} KB`;
 }
@@ -124,7 +128,8 @@ function renderRow(entry, index, theme) {
     `<text x="${layout.nameX}" y="${centerY}" dominant-baseline="central" fill="${theme.ink}">${escapeXml(entry.name)}</text>`,
     `<rect x="${layout.barX}" y="${centerY - 4}" width="${layout.barWidth}" height="8" rx="4" fill="${theme.track}"/>`,
     `<rect x="${layout.barX}" y="${centerY - 4}" width="${filled.toFixed(1)}" height="8" rx="4" fill="${theme.accent}"/>`,
-    `<text x="${layout.width - layout.padding}" y="${centerY}" dominant-baseline="central" text-anchor="end" fill="${theme.muted}">${formatSize(entry.bytes)}</text>`,
+    `<text x="${layout.sizeX}" y="${centerY}" dominant-baseline="central" text-anchor="end" fill="${theme.muted}">${formatSize(entry.bytes)}</text>`,
+    `<text x="${layout.width - layout.padding}" y="${centerY}" dominant-baseline="central" text-anchor="end" fill="${theme.ink}">${escapeXml(formatShare(entry.share))}</text>`,
   ].join("\n  ");
 }
 
@@ -153,4 +158,4 @@ for (const [name, theme] of Object.entries(themes)) {
   writeFileSync(join(outputDirectory, `languages-${name}.svg`), renderCard(entries, theme));
 }
 
-console.log(entries.map((entry) => `${entry.name}: ${formatSize(entry.bytes)}`).join("\n"));
+console.log(entries.map((entry) => `${entry.name}: ${formatSize(entry.bytes)}, ${escapeXml(formatShare(entry.share))}`).join("\n"));
