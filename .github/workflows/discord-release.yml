@@ -59,7 +59,7 @@ permissions:
   contents: read
 
 env:
-  RELEASE_ROLE: ""
+  RELEASE_ROLE: "1566562205657469008"
   PRERELEASE_ROLE: ""
 
 jobs:
