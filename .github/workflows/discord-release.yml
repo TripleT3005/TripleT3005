@@ -69,7 +69,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.repository || github.repository }}
-          sparse-checkout: ${{ inputs.changelog }}
+          sparse-checkout: |
+            ${{ inputs.changelog }}
+            assets/icons/icon-256.png
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -84,12 +86,12 @@ jobs:
           PAGE: ${{ inputs.page }}
           IMAGE: ${{ inputs.image }}
         run: |
-          node - <<'EOF'
+          COMMIT=$(git rev-parse HEAD) node - <<'EOF'
           const fs = require("node:fs");
           const path = require("node:path");
 
           // Changelog
-          const { REPOSITORY, TITLE, VERSION, TAG, CHANGELOG, PAGE, IMAGE, RELEASE_ROLE, PRERELEASE_ROLE, RUNNER_TEMP } = process.env;
+          const { REPOSITORY, TITLE, VERSION, TAG, CHANGELOG, PAGE, IMAGE, COMMIT, RELEASE_ROLE, PRERELEASE_ROLE, RUNNER_TEMP } = process.env;
           const lines = fs.readFileSync(CHANGELOG, "utf8").replace(/\r\n?/g, "\n").split("\n");
           const start = lines.findIndex((l) => l.startsWith(`## [${VERSION}]`));
           if (start < 0) {
@@ -110,6 +112,8 @@ jobs:
           const repoUrl = `https://github.com/${REPOSITORY}`;
           const releaseUrl = `${repoUrl}/releases/tag/${encodeURIComponent(TAG)}`;
           const prerelease = /^0\.|-/.test(VERSION);
+          const icon = "assets/icons/icon-256.png";
+          const image = IMAGE || (fs.existsSync(icon) ? `https://raw.githubusercontent.com/${REPOSITORY}/${COMMIT}/${icon}` : "");
           const more = `\n\n[Alle Änderungen](${releaseUrl})`;
           const description = notes.length > 4000 ? `${notes.slice(0, 4000 - more.length).replace(/\n[^\n]*$/, "")}\n…${more}` : notes;
           const fields = [
@@ -128,7 +132,7 @@ jobs:
                 description: description || "Keine Änderungen eingetragen.",
                 color: 0x2f6b4e,
                 fields,
-                ...(IMAGE ? { thumbnail: { url: IMAGE } } : {}),
+                ...(image ? { thumbnail: { url: image } } : {}),
                 footer: { text: REPOSITORY },
                 timestamp: new Date().toISOString(),
               },
