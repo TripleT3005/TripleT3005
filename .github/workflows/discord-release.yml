@@ -1,0 +1,147 @@
+name: Discord release
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        default: ""
+      title:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      tag:
+        type: string
+        required: true
+      changelog:
+        type: string
+        default: CHANGELOG.md
+      page:
+        type: string
+        default: ""
+      image:
+        type: string
+        default: ""
+    secrets:
+      DISCORD_WEBHOOK:
+        required: false
+  workflow_dispatch:
+    inputs:
+      repository:
+        type: string
+        required: true
+        default: TripleT3005/TrayReveal
+      title:
+        type: string
+        required: true
+        default: TrayReveal 1.1.2
+      version:
+        type: string
+        required: true
+        default: 1.1.2
+      tag:
+        type: string
+        required: true
+        default: v1.1.2
+      changelog:
+        type: string
+        default: CHANGELOG.md
+      page:
+        type: string
+        default: trayreveal
+      image:
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_ROLE: ""
+  PRERELEASE_ROLE: ""
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.repository || github.repository }}
+          sparse-checkout: ${{ inputs.changelog }}
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Post release to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPOSITORY: ${{ inputs.repository || github.repository }}
+          TITLE: ${{ inputs.title }}
+          VERSION: ${{ inputs.version }}
+          TAG: ${{ inputs.tag }}
+          CHANGELOG: ${{ inputs.changelog }}
+          PAGE: ${{ inputs.page }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          node - <<'EOF'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          // Changelog
+          const { REPOSITORY, TITLE, VERSION, TAG, CHANGELOG, PAGE, IMAGE, RELEASE_ROLE, PRERELEASE_ROLE, RUNNER_TEMP } = process.env;
+          const lines = fs.readFileSync(CHANGELOG, "utf8").replace(/\r\n?/g, "\n").split("\n");
+          const start = lines.findIndex((l) => l.startsWith(`## [${VERSION}]`));
+          if (start < 0) {
+            console.log(`::error::${CHANGELOG} has no section for version ${VERSION}`);
+            process.exit(1);
+          }
+          const end = lines.findIndex((l, i) => i > start && l.startsWith("## ["));
+          const section = lines.slice(start + 1, end < 0 ? undefined : end);
+          const german = section.findIndex((l) => /^### Deutsch\s*$/.test(l));
+          const germanEnd = section.findIndex((l, i) => i > german && /^### /.test(l));
+          const notes = (german < 0 ? section : section.slice(german + 1, germanEnd < 0 ? undefined : germanEnd))
+            .map((l) => l.replace(/^#{3,6} +(.*)$/, "**$1**"))
+            .join("\n")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+
+          // Message
+          const repoUrl = `https://github.com/${REPOSITORY}`;
+          const releaseUrl = `${repoUrl}/releases/tag/${encodeURIComponent(TAG)}`;
+          const prerelease = /^0\.|-/.test(VERSION);
+          const more = `\n\n[Alle Änderungen](${releaseUrl})`;
+          const description = notes.length > 4000 ? `${notes.slice(0, 4000 - more.length).replace(/\n[^\n]*$/, "")}\n…${more}` : notes;
+          const fields = [
+            { name: "Download", value: `[GitHub Release](${releaseUrl})`, inline: true },
+            ...(PAGE ? [{ name: "Projektseite", value: `[ckass.de](https://ckass.de/${PAGE}/de/)`, inline: true }] : []),
+            { name: "Quellcode", value: `[GitHub](${repoUrl})`, inline: true },
+          ];
+          const role = prerelease ? PRERELEASE_ROLE : RELEASE_ROLE;
+          const payload = {
+            content: role ? `<@&${role}>` : "",
+            allowed_mentions: { parse: [], roles: role ? [role] : [] },
+            embeds: [
+              {
+                title: prerelease ? `${TITLE} (Vorabversion)` : TITLE,
+                url: releaseUrl,
+                description: description || "Keine Änderungen eingetragen.",
+                color: 0x2f6b4e,
+                fields,
+                ...(IMAGE ? { thumbnail: { url: IMAGE } } : {}),
+                footer: { text: REPOSITORY },
+                timestamp: new Date().toISOString(),
+              },
+            ],
+          };
+          fs.writeFileSync(path.join(RUNNER_TEMP, "discord.json"), JSON.stringify(payload));
+          EOF
+
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::The repository secret DISCORD_WEBHOOK is not set, so the release was not announced on Discord"
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error \
+            --header "Content-Type: application/json" \
+            --data @"$RUNNER_TEMP/discord.json" \
+            "$WEBHOOK"
