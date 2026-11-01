@@ -6,6 +6,6 @@
     "stats": "node scripts/language-stats.mjs"
   },
   "dependencies": {
-    "devicon": "2.17.0"
+    "devicon": "2.18.0"
   }
 }
