@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 // Configuration
 
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? "TripleT3005";
-const token = process.env.GITHUB_TOKEN;
+const statsToken = process.env.LANGUAGE_STATS_TOKEN || undefined;
+const token = statsToken ?? process.env.GITHUB_TOKEN;
 const outputDirectory = process.argv[2] ?? "output";
 const maxLanguages = 9;
 
@@ -46,8 +47,23 @@ async function getJson(url) {
   return response.json();
 }
 
+async function getRepositories() {
+  const baseUrl = statsToken
+    ? "https://api.github.com/user/repos?affiliation=owner&visibility=all"
+    : `https://api.github.com/users/${owner}/repos?type=owner`;
+  const repositories = [];
+
+  for (let page = 1; ; page++) {
+    const batch = await getJson(`${baseUrl}&per_page=100&page=${page}`);
+    repositories.push(...batch);
+    if (batch.length < 100) {
+      return repositories;
+    }
+  }
+}
+
 async function getLanguageTotals() {
-  const repositories = await getJson(`https://api.github.com/users/${owner}/repos?type=owner&per_page=100`);
+  const repositories = await getRepositories();
   const totals = new Map();
 
   for (const repository of repositories) {
@@ -151,6 +167,7 @@ function renderCard(entries, theme) {
 
 // Main
 
+console.log(statsToken ? "Including private repositories" : "Public repositories only");
 const entries = toShares(await getLanguageTotals());
 mkdirSync(outputDirectory, { recursive: true });
 
