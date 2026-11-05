@@ -36,6 +36,7 @@ jobs:
         run: node scripts/language-stats.mjs output
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LANGUAGE_STATS_TOKEN: ${{ secrets.LANGUAGE_STATS_TOKEN }}
 
       - name: Publish to output branch
         working-directory: output
